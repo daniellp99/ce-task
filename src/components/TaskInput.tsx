@@ -4,16 +4,20 @@ import Link from "@tiptap/extension-link";
 import Mention from "@tiptap/extension-mention";
 import Placeholder from "@tiptap/extension-placeholder";
 import { PluginKey } from "@tiptap/pm/state";
-import { EditorProvider, ReactRenderer, mergeAttributes } from "@tiptap/react";
+import {
+  EditorContent,
+  ReactRenderer,
+  mergeAttributes,
+  useEditor,
+} from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import { SuggestionKeyDownProps, SuggestionProps } from "@tiptap/suggestion";
 import { SquarePlusIcon } from "lucide-react";
 import { Dispatch, SetStateAction, useState } from "react";
-import { ControllerRenderProps, useForm } from "react-hook-form";
+import { ControllerRenderProps, UseFormReset, useForm } from "react-hook-form";
 import tippy from "tippy.js";
 import { z } from "zod";
 
-import { Button } from "@/components/ui/button";
 import {
   Form,
   FormControl,
@@ -23,6 +27,7 @@ import {
 } from "@/components/ui/form";
 
 import { TaskType, taskSchema } from "@/lib/schemas";
+import { cn } from "@/lib/utils";
 import EditorActions from "./EditorActions";
 import SuggestionList from "./SuggestionList";
 
@@ -83,144 +88,170 @@ function suggestionRender() {
 function Editor({
   field,
   setShowActions,
+  resetForm,
 }: {
   field: ControllerRenderProps<TaskType>;
   setShowActions: Dispatch<SetStateAction<boolean>>;
+  resetForm: UseFormReset<TaskType>;
 }) {
-  return (
-    <EditorProvider
-      onFocus={() => setShowActions(true)}
-      onBlur={() => setShowActions(false)}
-      editorProps={{
-        attributes: {
-          class:
-            "text-md min-h-10 max-w-full flex bg-background px-3 py-2 outline-none",
+  const [hasFocus, setHasFocus] = useState(false);
+  const editor = useEditor({
+    editorProps: {
+      attributes: {
+        class:
+          "text-md min-h-10 max-w-full flex bg-background px-3 py-2 outline-none",
+      },
+    },
+    extensions: [
+      StarterKit,
+      Placeholder.configure({
+        placeholder: "Type to add new task",
+        showOnlyWhenEditable: false,
+      }),
+      Link.configure({
+        HTMLAttributes: {
+          class: "links",
         },
-      }}
-      extensions={[
-        StarterKit,
-        Placeholder.configure({
-          placeholder: "Type to add new task",
-          showOnlyWhenEditable: false,
-        }),
-        Link.configure({
-          HTMLAttributes: {
-            class: "links",
-          },
-          openOnClick: false,
-          autolink: true,
-          linkOnPaste: true,
-        }),
-        Mention.extend({
-          name: "users",
-        }).configure({
-          HTMLAttributes: {
-            class: "users",
-          },
-          renderHTML({ options, node }) {
+        openOnClick: false,
+        autolink: true,
+        linkOnPaste: true,
+      }),
+      Mention.extend({
+        name: "users",
+      }).configure({
+        HTMLAttributes: {
+          class: "users",
+        },
+        renderHTML({ options, node }) {
+          return [
+            "span",
+            mergeAttributes(options.HTMLAttributes),
+            `${node.attrs.label ?? node.attrs.id}`,
+          ];
+        },
+        deleteTriggerWithBackspace: true,
+        suggestion: {
+          char: "@",
+          pluginKey: new PluginKey("users"),
+          items: ({ query }) => {
+            // TODO: fetch from database
             return [
-              "span",
-              mergeAttributes(options.HTMLAttributes),
-              `${node.attrs.label ?? node.attrs.id}`,
-            ];
+              "Lea Thompson",
+              "Cyndi Lauper",
+              "Tom Cruise",
+              "Madonna",
+              "Jerry Hall",
+              "Joan Collins",
+              "Winona Ryder",
+              "Christina Applegate",
+              "Alyssa Milano",
+              "Molly Ringwald",
+              "Ally Sheedy",
+              "Debbie Harry",
+              "Olivia Newton-John",
+              "Elton John",
+              "Michael J. Fox",
+              "Axl Rose",
+              "Emilio Estevez",
+              "Ralph Macchio",
+              "Rob Lowe",
+              "Jennifer Grey",
+              "Mickey Rourke",
+              "John Cusack",
+              "Matthew Broderick",
+              "Justine Bateman",
+              "Lisa Bonet",
+            ]
+              .filter((item) =>
+                item.toLowerCase().startsWith(query.toLowerCase())
+              )
+              .slice(0, 5);
           },
-          deleteTriggerWithBackspace: true,
-          suggestion: {
-            char: "@",
-            pluginKey: new PluginKey("users"),
-            items: ({ query }) => {
-              // TODO: fetch from database
-              return [
-                "Lea Thompson",
-                "Cyndi Lauper",
-                "Tom Cruise",
-                "Madonna",
-                "Jerry Hall",
-                "Joan Collins",
-                "Winona Ryder",
-                "Christina Applegate",
-                "Alyssa Milano",
-                "Molly Ringwald",
-                "Ally Sheedy",
-                "Debbie Harry",
-                "Olivia Newton-John",
-                "Elton John",
-                "Michael J. Fox",
-                "Axl Rose",
-                "Emilio Estevez",
-                "Ralph Macchio",
-                "Rob Lowe",
-                "Jennifer Grey",
-                "Mickey Rourke",
-                "John Cusack",
-                "Matthew Broderick",
-                "Justine Bateman",
-                "Lisa Bonet",
-              ]
-                .filter((item) =>
-                  item.toLowerCase().startsWith(query.toLowerCase())
-                )
-                .slice(0, 5);
-            },
-            render: () => suggestionRender(),
-          },
-        }),
+          render: () => suggestionRender(),
+        },
+      }),
 
-        Mention.extend({
-          name: "labels",
-        }).configure({
-          HTMLAttributes: {
-            class: "labels",
-          },
-          renderHTML({ options, node }) {
+      Mention.extend({
+        name: "labels",
+      }).configure({
+        HTMLAttributes: {
+          class: "labels",
+        },
+        renderHTML({ options, node }) {
+          return [
+            "span",
+            mergeAttributes(options.HTMLAttributes),
+            `${node.attrs.label ?? node.attrs.id}`,
+          ];
+        },
+        deleteTriggerWithBackspace: true,
+        suggestion: {
+          char: "#",
+          pluginKey: new PluginKey("labels"),
+          items: ({ query }) => {
+            // TODO: fetch from database
             return [
-              "span",
-              mergeAttributes(options.HTMLAttributes),
-              `${node.attrs.label ?? node.attrs.id}`,
-            ];
+              "#tag1",
+              "#tag2",
+              "#tag3",
+              "#tag4",
+              "#tag5",
+              "#tag6",
+              "#tag7",
+              "#tag8",
+              "#tag9",
+              "#tag10",
+              "#tag11",
+              "#tag12",
+              "#tag13",
+              "#tag14",
+              "#tag15",
+              "#tag16",
+              "#tag17",
+              "#tag18",
+              "#tag19",
+              "#tag20",
+            ]
+              .filter((item) =>
+                item.toLowerCase().startsWith(query.toLowerCase())
+              )
+              .slice(0, 5);
           },
-          deleteTriggerWithBackspace: true,
-          suggestion: {
-            char: "#",
-            pluginKey: new PluginKey("labels"),
-            items: ({ query }) => {
-              // TODO: fetch from database
-              return [
-                "#tag1",
-                "#tag2",
-                "#tag3",
-                "#tag4",
-                "#tag5",
-                "#tag6",
-                "#tag7",
-                "#tag8",
-                "#tag9",
-                "#tag10",
-                "#tag11",
-                "#tag12",
-                "#tag13",
-                "#tag14",
-                "#tag15",
-                "#tag16",
-                "#tag17",
-                "#tag18",
-                "#tag19",
-                "#tag20",
-              ]
-                .filter((item) =>
-                  item.toLowerCase().startsWith(query.toLowerCase())
-                )
-                .slice(0, 5);
-            },
-            render: () => suggestionRender(),
-          },
-        }),
-      ]}
-      content={field.value}
-      onUpdate={({ editor }) => {
-        field.onChange(editor.getText());
-      }}
-    />
+          render: () => suggestionRender(),
+        },
+      }),
+    ],
+    content: field.value,
+    onUpdate: ({ editor }) => {
+      field.onChange(editor.getText());
+    },
+    onFocus: () => {
+      setShowActions(true);
+      setHasFocus(true);
+    },
+    onBlur: ({ editor }) => {
+      setShowActions(false);
+      setHasFocus(false);
+      resetForm();
+      editor.commands.clearContent();
+    },
+  });
+  return (
+    <>
+      <SquarePlusIcon
+        className={cn(
+          "size-6 stroke-blue-500",
+          hasFocus ? "cursor-text" : "cursor-pointer"
+        )}
+        onClick={() => {
+          if (!hasFocus) {
+            editor?.commands.focus();
+            setHasFocus(true);
+          }
+        }}
+      />
+      <EditorContent editor={editor} />
+    </>
   );
 }
 
@@ -245,29 +276,23 @@ export default function TaskInput() {
         onSubmit={form.handleSubmit(onSubmit)}
         className="flex flex-col w-full has-[#actions]:border has-[#actions]:shadow-md divide-y has-[#actions]:rounded-sm overflow-hidden"
       >
-        <fieldset className="flex w-full">
-          <Button
-            variant="ghost"
-            size="icon"
-            type="submit"
-            className="hover:bg-none"
-          >
-            <SquarePlusIcon className="size-6 stroke-blue-500" />
-          </Button>
-          <FormField
-            control={form.control}
-            name="input"
-            render={({ field }) => (
-              <FormItem className="max-w-full grow">
-                <FormControl>
-                  <Editor field={field} setShowActions={setShowActions} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        </fieldset>
-        {showActions && <EditorActions />}
+        <FormField
+          control={form.control}
+          name="input"
+          render={({ field }) => (
+            <FormItem className="ml-4 max-w-full grow flex items-center space-y-0">
+              <FormControl>
+                <Editor
+                  field={field}
+                  resetForm={form.reset}
+                  setShowActions={setShowActions}
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        {showActions && <EditorActions form={form} />}
       </form>
     </Form>
   );
