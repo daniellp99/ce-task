@@ -14,9 +14,8 @@ import StarterKit from "@tiptap/starter-kit";
 import { SuggestionKeyDownProps, SuggestionProps } from "@tiptap/suggestion";
 import { SquarePlusIcon } from "lucide-react";
 import { Dispatch, SetStateAction, useState } from "react";
-import { ControllerRenderProps, UseFormReset, useForm } from "react-hook-form";
-import tippy from "tippy.js";
-import { z } from "zod";
+import { ControllerRenderProps, useForm, useWatch } from "react-hook-form";
+import tippy, { GetReferenceClientRect, Instance, Props } from "tippy.js";
 
 import {
   Form,
@@ -26,6 +25,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 
+import { createTaskAction } from "@/actions/task";
 import { TaskType, taskSchema } from "@/lib/schemas";
 import { cn } from "@/lib/utils";
 import EditorActions from "./EditorActions";
@@ -33,7 +33,7 @@ import SuggestionList from "./SuggestionList";
 
 function suggestionRender() {
   let component: ReactRenderer;
-  let popup;
+  let popup: Instance<Props>[];
 
   return {
     onStart: (props: SuggestionProps<any>) => {
@@ -46,7 +46,8 @@ function suggestionRender() {
         return;
       }
       popup = tippy("body", {
-        getReferenceClientRect: props.clientRect,
+        getReferenceClientRect:
+          props.clientRect as GetReferenceClientRect | null,
         appendTo: () => document.body,
         content: component.element,
         showOnCreate: true,
@@ -64,7 +65,8 @@ function suggestionRender() {
       }
 
       popup[0].setProps({
-        getReferenceClientRect: props.clientRect,
+        getReferenceClientRect:
+          props.clientRect as GetReferenceClientRect | null,
       });
     },
 
@@ -74,7 +76,7 @@ function suggestionRender() {
 
         return true;
       }
-
+      // @ts-ignore
       return component.ref?.onKeyDown(props);
     },
 
@@ -88,11 +90,9 @@ function suggestionRender() {
 function Editor({
   field,
   setShowActions,
-  resetForm,
 }: {
   field: ControllerRenderProps<TaskType>;
   setShowActions: Dispatch<SetStateAction<boolean>>;
-  resetForm: UseFormReset<TaskType>;
 }) {
   const [hasFocus, setHasFocus] = useState(false);
   const editor = useEditor({
@@ -230,10 +230,13 @@ function Editor({
       setHasFocus(true);
     },
     onBlur: ({ editor }) => {
-      setShowActions(false);
-      setHasFocus(false);
-      resetForm();
-      editor.commands.clearContent();
+      // 500 ms delay to prevent editor from being blurred when clicking on the submit button
+      setTimeout(() => {
+        setShowActions(false);
+        setHasFocus(false);
+        editor.commands.clearContent();
+        field.onChange(editor.getText());
+      }, 500);
     },
   });
   return (
@@ -257,24 +260,26 @@ function Editor({
 
 export default function TaskInput() {
   const [showActions, setShowActions] = useState(false);
-  const form = useForm<z.infer<typeof taskSchema>>({
+  const form = useForm<TaskType>({
     resolver: zodResolver(taskSchema),
     defaultValues: {
       input: "",
     },
   });
 
-  function onSubmit(values: z.infer<typeof taskSchema>) {
-    // Do something with the form values.
-    // ✅ This will be type-safe and validated.
-    console.log(values);
+  async function onSubmit(values: TaskType) {
+    const res = await createTaskAction(values.input);
+    form.reset();
   }
 
   return (
     <Form {...form}>
       <form
         onSubmit={form.handleSubmit(onSubmit)}
-        className="flex flex-col w-full has-[#actions]:border has-[#actions]:shadow-md divide-y has-[#actions]:rounded-sm overflow-hidden"
+        className={cn(
+          "flex flex-col w-full overflow-hidden",
+          showActions && "border shadow-md divide-y rounded-sm"
+        )}
       >
         <FormField
           control={form.control}
@@ -282,17 +287,18 @@ export default function TaskInput() {
           render={({ field }) => (
             <FormItem className="ml-4 max-w-full grow flex items-center space-y-0">
               <FormControl>
-                <Editor
-                  field={field}
-                  resetForm={form.reset}
-                  setShowActions={setShowActions}
-                />
+                <Editor field={field} setShowActions={setShowActions} />
               </FormControl>
               <FormMessage />
             </FormItem>
           )}
         />
-        {showActions && <EditorActions form={form} />}
+        <EditorActions
+          resetForm={form.reset}
+          hasChanges={form.formState.isDirty}
+          pending={form.formState.isSubmitting || form.formState.isLoading}
+          showActions={showActions}
+        />
       </form>
     </Form>
   );
