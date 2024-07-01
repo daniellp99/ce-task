@@ -5,30 +5,47 @@ import {
   MoveDiagonalIcon,
   SunIcon,
 } from "lucide-react";
-import { UseFormReset } from "react-hook-form";
 
 import { Button } from "@/components/ui/button";
-
-import { TaskType } from "@/lib/schemas";
+import { useCurrentEditor } from "@tiptap/react";
+import { EditorState } from "@tiptap/pm/state";
+import { Dispatch, SetStateAction } from "react";
 import { cn } from "@/lib/utils";
 
 export default function EditorActions({
   hasChanges,
   pending,
-  showActions,
-  resetForm,
+  hasFocus,
+  setHasFocus,
+  defaultValue,
 }: {
   hasChanges: boolean;
   pending: boolean;
-  showActions: boolean;
-  resetForm: UseFormReset<TaskType>;
+  hasFocus: boolean;
+  setHasFocus: Dispatch<SetStateAction<boolean>>;
+  defaultValue: string | undefined;
 }) {
+  const { editor } = useCurrentEditor();
+
+  function resetEditorContent() {
+    editor?.commands.setContent(defaultValue || "", true);
+
+    // The following code clears the history. Hopefully without side effects.
+    const newEditorState = EditorState.create({
+      doc: editor?.state.doc,
+      plugins: editor?.state.plugins,
+      schema: editor?.state.schema,
+    });
+    editor?.view.updateState(newEditorState);
+    setHasFocus(false);
+  }
+
   return (
     <fieldset
       id="actions"
       className={cn(
-        " items-center justify-between gap-8 text-sm bg-gray-50 h-14 p-2",
-        showActions ? "flex" : "hidden"
+        "items-center justify-between gap-8 text-sm bg-gray-50 h-14 p-2",
+        hasFocus ? "grow-[4] w-full flex-1 flex border-t" : "hidden"
       )}
     >
       <div>
@@ -73,17 +90,31 @@ export default function EditorActions({
       </div>
       <div className="flex gap-1">
         <Button
-          type="button"
+          type="reset"
           variant="secondary"
           disabled={pending}
           className="bg-slate-100 hover:bg-slate-100"
-          onClick={() => resetForm()}
+          onClick={() => {
+            console.log("reset");
+
+            resetEditorContent();
+          }}
         >
           Cancel
         </Button>
         <Button
-          type="submit"
+          type={hasChanges ? "submit" : "button"}
           disabled={pending}
+          onClick={() => {
+            if (hasChanges) {
+              // time out of 100 ms to reset form
+              setTimeout(() => {
+                resetEditorContent();
+              }, 100);
+            } else {
+              setHasFocus(false);
+            }
+          }}
           className="bg-blue-700 hover:bg-blue-700"
         >
           {hasChanges ? "Add" : "Ok"}
