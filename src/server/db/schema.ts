@@ -32,7 +32,7 @@ export const tasks = createTable(
 );
 
 export const tasksRelations = relations(tasks, ({ many }) => ({
-  users: many(users),
+  tasksToUsers: many(tasksToUsers),
   tasksToTags: many(tasksToTags),
 }));
 
@@ -41,18 +41,14 @@ export const users = createTable(
   {
     id: integer("id").primaryKey(),
     name: text("name", { length: 256 }).notNull(),
-    taskId: integer("task_id"),
   },
   (example) => ({
     userNameIndex: index("user_name_idx").on(example.name),
   })
 );
 
-export const usersRelations = relations(users, ({ one }) => ({
-  task: one(tasks, {
-    fields: [users.taskId],
-    references: [tasks.id],
-  }),
+export const usersRelations = relations(users, ({ many }) => ({
+  tasksToUsers: many(tasksToUsers),
 }));
 
 export const tags = createTable(
@@ -93,5 +89,31 @@ export const taskToTagsRelations = relations(tasksToTags, ({ one }) => ({
   tag: one(tags, {
     fields: [tasksToTags.tagId],
     references: [tags.id],
+  }),
+}));
+
+export const tasksToUsers = createTable(
+  "task_to_user",
+  {
+    taskId: integer("task_id")
+      .notNull()
+      .references(() => tasks.id),
+    userId: integer("user_id")
+      .notNull()
+      .references(() => users.id),
+  },
+  (t) => ({
+    pk: primaryKey({ columns: [t.taskId, t.userId] }),
+  })
+);
+
+export const taskToUsersRelations = relations(tasksToUsers, ({ one }) => ({
+  task: one(tasks, {
+    fields: [tasksToUsers.taskId],
+    references: [tasks.id],
+  }),
+  user: one(users, {
+    fields: [tasksToUsers.userId],
+    references: [users.id],
   }),
 }));
