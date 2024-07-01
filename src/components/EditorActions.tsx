@@ -5,57 +5,118 @@ import {
   MoveDiagonalIcon,
   SunIcon,
 } from "lucide-react";
-import { UseFormReturn } from "react-hook-form";
 
 import { Button } from "@/components/ui/button";
-
-import { TaskType } from "@/lib/schemas";
+import { useCurrentEditor } from "@tiptap/react";
+import { EditorState } from "@tiptap/pm/state";
+import { Dispatch, SetStateAction } from "react";
+import { cn } from "@/lib/utils";
 
 export default function EditorActions({
-  form,
+  hasChanges,
+  pending,
+  hasFocus,
+  setHasFocus,
+  defaultValue,
 }: {
-  form: UseFormReturn<TaskType>;
+  hasChanges: boolean;
+  pending: boolean;
+  hasFocus: boolean;
+  setHasFocus: Dispatch<SetStateAction<boolean>>;
+  defaultValue: string | undefined;
 }) {
-  const hasChanges = form.formState.isDirty;
+  const { editor } = useCurrentEditor();
+
+  function resetEditorContent() {
+    editor?.commands.setContent(defaultValue || "", true);
+
+    // The following code clears the history. Hopefully without side effects.
+    const newEditorState = EditorState.create({
+      doc: editor?.state.doc,
+      plugins: editor?.state.plugins,
+      schema: editor?.state.schema,
+    });
+    editor?.view.updateState(newEditorState);
+    setHasFocus(false);
+  }
 
   return (
     <fieldset
       id="actions"
-      className="flex items-center justify-between gap-8 text-sm h-14 p-2 bg-gray-50"
+      className={cn(
+        "items-center justify-between gap-8 text-sm bg-gray-50 h-14 p-2",
+        hasFocus ? "grow-[4] w-full flex-1 flex border-t" : "hidden"
+      )}
     >
       <div>
         <Button
           variant="secondary"
-          disabled={!hasChanges}
+          type="button"
+          disabled={!hasChanges || pending}
           className="hover:bg-secondary text-slate-900 disabled:text-slate-600"
         >
           <MoveDiagonalIcon className="mr-2 size-4 stroke-slate-600" /> Open
         </Button>
       </div>
       <div className="grow items-start flex gap-1">
-        <Button variant="action" disabled={!hasChanges}>
+        <Button
+          variant="action"
+          type="button"
+          disabled={!hasChanges || pending}
+        >
           <CalendarIcon className="mr-2 size-4" /> Today
         </Button>
-        <Button variant="action" disabled={!hasChanges}>
+        <Button
+          variant="action"
+          type="button"
+          disabled={!hasChanges || pending}
+        >
           <LockOpenIcon className="mr-2 size-4" /> Public
         </Button>
-        <Button variant="action" disabled={!hasChanges}>
+        <Button
+          variant="action"
+          type="button"
+          disabled={!hasChanges || pending}
+        >
           <SunIcon className="mr-2 size-4" /> Highlight
         </Button>
-        <Button variant="action" disabled={!hasChanges}>
+        <Button
+          variant="action"
+          type="button"
+          disabled={!hasChanges || pending}
+        >
           <CircleDotIcon className="mr-2 size-4" /> Estimation
         </Button>
       </div>
       <div className="flex gap-1">
         <Button
-          type="button"
+          type="reset"
           variant="secondary"
+          disabled={pending}
           className="bg-slate-100 hover:bg-slate-100"
-          onClick={() => form.reset()}
+          onClick={() => {
+            console.log("reset");
+
+            resetEditorContent();
+          }}
         >
           Cancel
         </Button>
-        <Button type="submit" className="bg-blue-700 hover:bg-blue-700">
+        <Button
+          type={hasChanges ? "submit" : "button"}
+          disabled={pending}
+          onClick={() => {
+            if (hasChanges) {
+              // time out of 100 ms to reset form
+              setTimeout(() => {
+                resetEditorContent();
+              }, 100);
+            } else {
+              setHasFocus(false);
+            }
+          }}
+          className="bg-blue-700 hover:bg-blue-700"
+        >
           {hasChanges ? "Add" : "Ok"}
         </Button>
       </div>
