@@ -65,12 +65,12 @@ export default function CreateTaskEditor({
         onFocus={() => {
           setTimeout(() => {
             setHasFocus(true);
-          }, 100);
+          }, 500);
         }}
         onBlur={() => {
           setTimeout(() => {
             setHasFocus(false);
-          }, 100);
+          }, 500);
         }}
         slotAfter={
           <EditorActions

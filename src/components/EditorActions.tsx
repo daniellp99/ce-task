@@ -107,10 +107,10 @@ export default function EditorActions({
           disabled={pending}
           onClick={() => {
             if (hasChanges) {
-              // time out of 100 ms to reset form
+              // time out of 500 ms to reset form
               setTimeout(() => {
                 resetEditorContent();
-              }, 100);
+              }, 500);
             } else {
               setHasFocus(false);
             }
