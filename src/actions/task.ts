@@ -1,5 +1,6 @@
 "use server";
 
+import { TaskType } from "@/lib/schemas";
 import { db } from "@/server/db";
 import {
   tags,
@@ -10,9 +11,12 @@ import {
 } from "@/server/db/schema";
 import { revalidatePath } from "next/cache";
 
-export async function createTaskAction(input: string) {
-  const words = input.split(" ").filter((word) => word !== "");
-  const task = await db.insert(tasks).values({ text: input }).returning();
+export async function createTaskAction(values: TaskType) {
+  const words = values.input.split(" ").filter((word) => word !== "");
+  const task = await db
+    .insert(tasks)
+    .values({ text: values.input, html: values.html })
+    .returning();
 
   words.forEach(async (word, index, arr) => {
     if (arr.slice(0, index).some((w) => w === word)) {

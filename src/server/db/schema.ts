@@ -24,6 +24,7 @@ export const tasks = createTable(
   {
     id: integer("id").primaryKey(),
     text: text("text", { length: 2000 }).notNull(),
+    html: text("html", { length: 2000 }).notNull(),
     done: integer("done", { mode: "boolean" }).notNull().default(false),
   },
   (example) => ({
