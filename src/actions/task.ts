@@ -1,6 +1,6 @@
 "use server";
 
-import { TaskType } from "@/lib/schemas";
+import { CreateTaskType, EditTaskType } from "@/lib/schemas";
 import { db } from "@/server/db";
 import {
   tags,
@@ -9,13 +9,14 @@ import {
   tasksToUsers,
   users,
 } from "@/server/db/schema";
+import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 
-export async function createTaskAction(values: TaskType) {
-  const words = values.input.split(" ").filter((word) => word !== "");
+export async function createTaskAction(values: CreateTaskType) {
+  const words = values.text.split(" ").filter((word) => word !== "");
   const task = await db
     .insert(tasks)
-    .values({ text: values.input, html: values.html })
+    .values({ text: values.text, html: values.html })
     .returning();
 
   words.forEach(async (word, index, arr) => {
@@ -71,4 +72,22 @@ export async function createTaskAction(values: TaskType) {
 
   revalidatePath("/");
   return task[0];
+}
+
+export async function getTasksAction() {
+  const tasks = await db.query.tasks.findMany();
+  return tasks;
+}
+
+export async function toggleTaskDoneAction({
+  id,
+  done,
+}: Pick<EditTaskType, "id" | "done">) {
+  const task = await db.query.tasks.findFirst({
+    where: (tasks, { eq }) => eq(tasks.id, id),
+  });
+  if (task) {
+    await db.update(tasks).set({ done }).where(eq(tasks.id, id)).execute();
+  }
+  revalidatePath("/");
 }
